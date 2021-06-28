@@ -31,23 +31,33 @@ local virtual_text_hl = 'VSyntaxVirtualText'
 -- Generates the description of the highlight group corresponding to the
 -- given syntax ID.
 -- Returns a string with the following structure:
--- `prefix` xxx `highlight name` → `link name`: `colors`, `attributes`
+-- `prefix` xxx [`transparent name`] `highlight name` → `link name`: `colors`,
+--     `attributes`
 -- Any non relevant part is skipped.
-local function _syntax_desc(synID)
+local function _syntax_desc(line, col)
     -- Generate the `xxx` and the highlight names.
     local descs = {}
     table.insert(descs, {vsyn.options.prefix or '', virtual_text_hl})
     local desc = nil
-    local syn_name = vim.fn.synIDattr(synID, 'name')
-    local id_trans = vim.fn.synIDtrans(synID)
-    if id_trans == synID then
+    local id_orig = vim.fn.synID(line, col, 0)
+    local syn_id = vim.fn.synID(line, col, 1)
+    local syn_name = vim.fn.synIDattr(syn_id, 'name')
+    local id_trans = vim.fn.synIDtrans(syn_id)
+    if id_orig ~= syn_id then
+        local orig_name = vim.fn.synIDattr(id_orig, 'name')
+        desc = ' [' .. orig_name .. ']'
+    else
+        desc = ''
+    end
+
+    if id_trans == syn_id then
         if syn_name then
-            desc = ' ' .. syn_name
+            desc = desc .. ' ' .. syn_name
         end
         table.insert(descs, {'xxx', syn_name})
     else
         local trans_name = vim.fn.synIDattr(id_trans, 'name')
-        desc = ' ' .. syn_name .. ' → ' .. trans_name
+        desc = desc .. ' ' .. syn_name .. ' → ' .. trans_name
         table.insert(descs, {'xxx', trans_name})
     end
 
@@ -74,6 +84,13 @@ local function _syntax_desc(synID)
         table.insert(component_desc, 'font=' .. attr_desc)
     end
 
+    -- Generate conceal char.
+    local conceal = vim.fn.synconcealed(line, col)
+    if conceal[1] == 1 then
+        table.insert(component_desc, 'conceal=' .. conceal[2])
+    end
+
+
     -- Combine all parts into a string.
     component_desc = table.concat(component_desc, ', ')
     if #component_desc > 0 then
@@ -87,8 +104,7 @@ end
 -- Print the syntax information for the token under the cursor
 -- Mainly for testing/debug purposes
 -- vsyn.show_syntax = function()
---     local synID = vim.fn.synID(vim.fn.line('.'), vim.fn.col('.'), 1)
---     local desc = _syntax_desc(synID)
+--     local desc = _syntax_desc(vim.fn.line('.'), vim.fn.col('.'))
 --     print(desc)
 -- end
 
@@ -97,8 +113,7 @@ vsyn.update_virtual_text = function()
     vim.api.nvim_buf_clear_namespace(0, virtual_text_ns, 0, -1)
 
     local line = vim.fn.line('.')
-    local synID = vim.fn.synID(line, vim.fn.col('.'), 1)
-    local descs = _syntax_desc(synID)
+    local descs = _syntax_desc(line, vim.fn.col('.'))
     vim.api.nvim_buf_set_virtual_text(
     0, virtual_text_ns, line - 1, descs, {}
     )
