@@ -3,6 +3,10 @@
 `nvim-vsyntax` displays the highlighting used by the syntax element under
 the cursor as virtual text.
 
+![ATX Header](./media/header-atx.png)
+
+![Header Title](./media/header-title.png)
+
 # Installation
 
 The preferred method for installing `nvim-vsyntax` is through a plugin manager,
